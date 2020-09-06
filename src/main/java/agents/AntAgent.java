@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * This class represents an AntAgent agent;
@@ -24,6 +25,9 @@ public class AntAgent extends Agent {
 
     static final String INPUT_FILE = "src\\main\\resources\\environment.txt";
     private final int NUMBER_OF_ANTS = 3;
+    // the conversation id for the message sent to another ant to inform it about the change
+    // in current status:
+    static final String UPDATE_NEIGHBOR_STATUS = "neighbor-status-update";
 
     private static final List<String> agentIdentifiers = Arrays.asList("ant1", "ant2", "ant3");
     // myAgentIndex = the index of this agent's name in the list of agent identifiers;
@@ -36,7 +40,7 @@ public class AntAgent extends Agent {
     private int numberOfIterations;
     private int currentIteration;
     /**
-     * status = 0, if the agent hasn't found a hamiltonian cycle yet, or 1, otherwise;
+     * status = false, if the agent hasn't found a hamiltonian cycle yet, or true, otherwise;
      */
     private boolean status = false;
 
@@ -94,6 +98,15 @@ public class AntAgent extends Agent {
     private List<CityRoad> cityGrid = null;
 
     /**
+     * Get the actual name of the agent from the one obtain with getName().
+     * @param agentName the full name of the agent
+     * @return the actual name of the agent.
+     */
+    private String getActualAgentName(String agentName){
+        return agentName.split("@")[0];
+    }
+
+    /**
      *
      * @param currentCity
      * @param availableCities
@@ -110,16 +123,15 @@ public class AntAgent extends Agent {
     private class UpdateFriendStatusServer extends CyclicBehaviour {
         public void action() {
             MessageTemplate messageTemplate = MessageTemplate
-                    .MatchConversationId("send-agent-status");
-            ACLMessage aclMessage = myAgent.receive(messageTemplate);
-            if(aclMessage != null){
-                String senderName = aclMessage.getSender().getName();
-                int agentIndex = agentIdentifiers.indexOf(senderName);
-                boolean newStatus = Integer.parseInt(aclMessage.getContent()) == 1;
-                finishedAnt[agentIndex] = newStatus;
-                if(newStatus){
-                    // update the pheromone values:
-                }
+                    .MatchConversationId(UPDATE_NEIGHBOR_STATUS);
+            ACLMessage updateStatusMessage = myAgent.receive(messageTemplate);
+            if(updateStatusMessage != null){
+                String senderName = getActualAgentName(updateStatusMessage.getSender().getName());
+                boolean newStatus = Integer.parseInt(updateStatusMessage.getContent()) == 1;
+                int senderIndex = agentIdentifiers.indexOf(senderName);
+                finishedAnt[senderIndex] = newStatus;
+                System.out.println(getActualAgentName(myAgent.getName()) + ": " + senderName +
+                        "changed its status to " + newStatus);
             }
         }
     }
@@ -143,20 +155,43 @@ public class AntAgent extends Agent {
     public class FindTourBehaviour extends CyclicBehaviour {
 
         private int state = 0;
+        private long currentCity = sourceCity;
 
         public void action() {
             switch (state){
                 case 0:
+                    System.out.println(getActualAgentName(myAgent.getName()) + ": starting...");
                     // start the agent:
 
                     // reset the cityIsVisited array:
                     Arrays.fill(cityIsVisited, false);
+                    // inform the other ants that you haven:
+                    ACLMessage informNotFinished = new ACLMessage(ACLMessage.INFORM);
+                    for (String agentIdentifier : agentIdentifiers) {
+                        if(!agentIdentifier.equals(getActualAgentName(myAgent.getName())))
+                        informNotFinished.addReceiver(new AID(agentIdentifier, AID.ISLOCALNAME));
+                    }
+                    informNotFinished.setLanguage("English");
+                    informNotFinished.setConversationId(UPDATE_NEIGHBOR_STATUS);
+                    informNotFinished.setContent("0");
+                    myAgent.send(informNotFinished);
+                    state = 1;
                     break;
                 case 1:
                     // the agent is still searching for the hamiltonian cycle:
+
+                    // get the list of neighbour cities that haven't been visited yet:
+                    List<Long> possibleCities = cityGrid.stream()
+                            .filter(cityRoad -> cityRoad.sourceId == currentCity &&
+                                    !cityIsVisited[Math.toIntExact(cityRoad.targetId)])
+                            .map(cityRoad -> cityRoad.targetId)
+                            .collect(Collectors.toList());
                     break;
                 case 2:
                     // a hamiltonian route has been found: wait for the other ants to finish:
+                    break;
+                case 3:
+                    // the number of iterations has been exceeded:
                     break;
             }
         }
@@ -235,6 +270,8 @@ public class AntAgent extends Agent {
             System.out.println("cityGrid length: " + cityGrid.size());
             // add the FindTourBehaviour behaviour:
             addBehaviour(new FindTourBehaviour());
+            // add the behavior for updating the status of other ants:
+            addBehaviour(new UpdateFriendStatusServer());
         } catch (Exception e) {
             System.err.println(e.getMessage());
         }
