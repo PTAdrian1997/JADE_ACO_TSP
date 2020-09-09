@@ -33,6 +33,9 @@ public class AntAgent extends Agent {
     // myAgentIndex = the index of this agent's name in the list of agent identifiers;
     private int myAgentIndex;
 
+    // betaParameter = the parameter that determines the relative importance of
+    // pheromone versus distance;
+    private double betaParameter;
 
     private int numberOfCities = -1;
     private int sourceCity = -1;
@@ -99,21 +102,61 @@ public class AntAgent extends Agent {
 
     /**
      * Get the actual name of the agent from the one obtain with getName().
+     *
      * @param agentName the full name of the agent
      * @return the actual name of the agent.
      */
-    private String getActualAgentName(String agentName){
+    private String getActualAgentName(String agentName) {
         return agentName.split("@")[0];
     }
 
     /**
+     * Return the index of the given agent name.
      *
-     * @param currentCity
-     * @param availableCities
-     * @return
+     * @param agentName the name of the agent with an unknown agent.
+     * @return the agent index.
      */
-    private double getNextStateProbability(int currentCity, List<Integer> availableCities){
-        return 0.0;
+    private Integer getAntId(String agentName) {
+        return agentIdentifiers.indexOf(agentName);
+    }
+
+    /**
+     * This method will return a list L, where each element will be the probability that
+     * the city at the corresponding index will be the next one visited on the current tour.
+     *
+     * @param currentCity     the current city of the ant
+     * @param availableCities the list of all the cities where the ant can go next.
+     * @return the list containing, for each city from availableCities, the probability
+     * that the city will be the next station.
+     */
+    private List<Double> getNextStateProbability(long currentCity, List<Long> availableCities) {
+
+        List<Double> nextStateProbabilities = new ArrayList<>();
+        List<Integer> roadIds = availableCities.stream()
+                .map(cityId -> {
+                            int roadId = 0;
+                            while(roadId < cityGrid.size()){
+                                CityRoad cityRoad = cityGrid.get(roadId);
+                                if(cityRoad.sourceId == currentCity &&
+                                        cityRoad.targetId.equals(cityId))
+                                    break;
+                                roadId++;
+                            }
+                            return roadId;
+                        }
+                ).collect(Collectors.toList());
+        Double probSum = roadIds.stream().map(roadId -> {
+            double pheromone = subjectivePheromoneLevel[myAgentIndex][roadId];
+            double roadDistance = cityGrid.get(roadId).length;
+            return pheromone * Math.pow(roadDistance, betaParameter);
+        }).reduce(0.0, Double::sum);
+        nextStateProbabilities = roadIds.stream()
+                .map(roadId -> {
+                    double pheromone = subjectivePheromoneLevel[myAgentIndex][roadId];
+                    double roadDistance = cityGrid.get(roadId).length;
+                    return pheromone * Math.pow(roadDistance, betaParameter) / probSum;
+                }).collect(Collectors.toList());
+        return nextStateProbabilities;
     }
 
     /**
@@ -125,7 +168,7 @@ public class AntAgent extends Agent {
             MessageTemplate messageTemplate = MessageTemplate
                     .MatchConversationId(UPDATE_NEIGHBOR_STATUS);
             ACLMessage updateStatusMessage = myAgent.receive(messageTemplate);
-            if(updateStatusMessage != null){
+            if (updateStatusMessage != null) {
                 String senderName = getActualAgentName(updateStatusMessage.getSender().getName());
                 boolean newStatus = Integer.parseInt(updateStatusMessage.getContent()) == 1;
                 int senderIndex = agentIdentifiers.indexOf(senderName);
@@ -158,7 +201,7 @@ public class AntAgent extends Agent {
         private long currentCity = sourceCity;
 
         public void action() {
-            switch (state){
+            switch (state) {
                 case 0:
                     System.out.println(getActualAgentName(myAgent.getName()) + ": starting...");
                     // start the agent:
@@ -168,8 +211,8 @@ public class AntAgent extends Agent {
                     // inform the other ants that you haven:
                     ACLMessage informNotFinished = new ACLMessage(ACLMessage.INFORM);
                     for (String agentIdentifier : agentIdentifiers) {
-                        if(!agentIdentifier.equals(getActualAgentName(myAgent.getName())))
-                        informNotFinished.addReceiver(new AID(agentIdentifier, AID.ISLOCALNAME));
+                        if (!agentIdentifier.equals(getActualAgentName(myAgent.getName())))
+                            informNotFinished.addReceiver(new AID(agentIdentifier, AID.ISLOCALNAME));
                     }
                     informNotFinished.setLanguage("English");
                     informNotFinished.setConversationId(UPDATE_NEIGHBOR_STATUS);
@@ -186,6 +229,8 @@ public class AntAgent extends Agent {
                                     !cityIsVisited[Math.toIntExact(cityRoad.targetId)])
                             .map(cityRoad -> cityRoad.targetId)
                             .collect(Collectors.toList());
+                    // compute the city probabilities (random-proportional rule):
+
                     break;
                 case 2:
                     // a hamiltonian route has been found: wait for the other ants to finish:
@@ -253,7 +298,7 @@ public class AntAgent extends Agent {
                 throw new Exception("invalid number of arguments passed to the AntAgent.");
             }
             // get the number of iterations:
-            numberOfIterations = Integer.parseInt((String)args[0]);
+            numberOfIterations = Integer.parseInt((String) args[0]);
             currentIteration = 0;
             // create the finishedAnt array:
             this.finishedAnt = new boolean[NUMBER_OF_ANTS];
@@ -263,7 +308,7 @@ public class AntAgent extends Agent {
             cityIsVisited = new boolean[numberOfCities];
             // create the pheromone matrix:
             subjectivePheromoneLevel = new double[NUMBER_OF_ANTS][cityGrid.size()];
-            for(int i = 0;i < NUMBER_OF_ANTS;i++){
+            for (int i = 0; i < NUMBER_OF_ANTS; i++) {
                 subjectivePheromoneLevel[i] = new double[cityGrid.size()];
                 Arrays.fill(subjectivePheromoneLevel[i], 0);
             }
