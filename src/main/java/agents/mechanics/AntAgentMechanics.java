@@ -33,20 +33,12 @@ public class AntAgentMechanics {
             return pheromone * Math.pow(1/roadDistance, betaParameter);
         }).collect(Collectors.toList());
         Double probSum = rawValues.stream().reduce(0.0, Double::sum);
-        return rawValues.stream().map(rawValue -> rawValue / probSum)
+        List<Double> result = rawValues.stream().map(rawValue -> {
+            if(probSum == 0.0)return 0.0;
+            return rawValue / probSum;
+        })
                 .collect(Collectors.toList());
-//        Double probSum = roadIds.stream().map(roadId -> {
-//            double pheromone = subjectivePheromoneLevel[roadId];
-//            double roadDistance = cityGrid.get(roadId).getLength();
-//            return pheromone * Math.pow(roadDistance, betaParameter);
-//        }).reduce(0.0, Double::sum);
-//        nextStateProbabilities = roadIds.stream()
-//                .map(roadId -> {
-//                    double pheromone = subjectivePheromoneLevel[roadId];
-//                    double roadDistance = cityGrid.get(roadId).getLength();
-//                    return pheromone * Math.pow(roadDistance, betaParameter) / probSum;
-//                }).collect(Collectors.toList());
-//        return nextStateProbabilities;
+        return result;
     }
 
 }
