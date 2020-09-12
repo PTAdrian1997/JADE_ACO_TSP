@@ -207,7 +207,7 @@ public class AntAgent extends Agent {
                             .map(cityRoad -> cityRoad.targetId)
                             .collect(Collectors.toList());
                     // compute the city probabilities (random-proportional rule):
-//                    List<Double> nextStateProbabilities = getNextStateProbability(currentCity, possibleCities);
+                    List<Double> nextStateProbabilities = getNextStateProbability(currentCity, possibleCities);
 
                     break;
                 case 2:
@@ -269,7 +269,7 @@ public class AntAgent extends Agent {
     }
 
     protected void setup() {
-        myAgentIndex = agentIdentifiers.indexOf(this.getAID().getName());
+        myAgentIndex = agentIdentifiers.indexOf(getActualAgentName(this.getAID().getName()));
         try {
             Object[] args = getArguments();
             if (args == null || args.length == 0) {
