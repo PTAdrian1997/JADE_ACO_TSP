@@ -1,5 +1,6 @@
 package agents;
 
+import agents.mechanics.AntAgentMechanics;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
@@ -130,33 +131,9 @@ public class AntAgent extends Agent {
      * that the city will be the next station.
      */
     private List<Double> getNextStateProbability(long currentCity, List<Long> availableCities) {
-
-        List<Double> nextStateProbabilities = new ArrayList<>();
-        List<Integer> roadIds = availableCities.stream()
-                .map(cityId -> {
-                            int roadId = 0;
-                            while(roadId < cityGrid.size()){
-                                CityRoad cityRoad = cityGrid.get(roadId);
-                                if(cityRoad.sourceId == currentCity &&
-                                        cityRoad.targetId.equals(cityId))
-                                    break;
-                                roadId++;
-                            }
-                            return roadId;
-                        }
-                ).collect(Collectors.toList());
-        Double probSum = roadIds.stream().map(roadId -> {
-            double pheromone = subjectivePheromoneLevel[myAgentIndex][roadId];
-            double roadDistance = cityGrid.get(roadId).length;
-            return pheromone * Math.pow(roadDistance, betaParameter);
-        }).reduce(0.0, Double::sum);
-        nextStateProbabilities = roadIds.stream()
-                .map(roadId -> {
-                    double pheromone = subjectivePheromoneLevel[myAgentIndex][roadId];
-                    double roadDistance = cityGrid.get(roadId).length;
-                    return pheromone * Math.pow(roadDistance, betaParameter) / probSum;
-                }).collect(Collectors.toList());
-        return nextStateProbabilities;
+        return AntAgentMechanics.getNextStateProbability(currentCity, availableCities,
+                cityGrid,
+                subjectivePheromoneLevel[myAgentIndex], betaParameter);
     }
 
     /**
@@ -230,6 +207,7 @@ public class AntAgent extends Agent {
                             .map(cityRoad -> cityRoad.targetId)
                             .collect(Collectors.toList());
                     // compute the city probabilities (random-proportional rule):
+//                    List<Double> nextStateProbabilities = getNextStateProbability(currentCity, possibleCities);
 
                     break;
                 case 2:
