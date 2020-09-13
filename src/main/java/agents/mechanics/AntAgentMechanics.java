@@ -11,7 +11,7 @@ public class AntAgentMechanics {
     public static List<Double> getNextStateProbability(
             long currentCity, List<Long> availableCities,
             List<AntAgent.CityRoad> cityGrid,
-            double[] subjectivePheromoneLevel,
+            Double[] subjectivePheromoneLevel,
             double betaParameter
             ){
         List<Integer> roadIds = availableCities.stream()

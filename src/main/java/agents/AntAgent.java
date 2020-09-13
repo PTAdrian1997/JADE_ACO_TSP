@@ -5,6 +5,10 @@ import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
@@ -14,8 +18,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * This class represents an AntAgent agent;
@@ -23,14 +29,14 @@ import java.util.stream.Collectors;
 public class AntAgent extends Agent {
 
     static final String INPUT_FILE = "src\\main\\resources\\environment.txt";
-    private final int NUMBER_OF_ANTS = 3;
+    private final String TOUR_FINDING_SERVICE = "tour-finding";
+
+    // the list of known ant agents:
+    private List<AID> antAgents;
+
     // the conversation id for the message sent to another ant to inform it about the change
     // in current status:
     static final String UPDATE_NEIGHBOR_STATUS = "neighbor-status-update";
-
-    private static final List<String> agentIdentifiers = Arrays.asList("ant1", "ant2", "ant3");
-    // myAgentIndex = the index of this agent's name in the list of agent identifiers;
-    private int myAgentIndex;
 
     // betaParameter = the parameter that determines the relative importance of
     // pheromone versus distance;
@@ -44,7 +50,7 @@ public class AntAgent extends Agent {
      * status = false, if the agent hasn't found a hamiltonian cycle yet, or true, otherwise;
      */
     private boolean status = false;
-    private String myAgentNickname;
+//    private String myAgentNickname;
 
     /**
      * finishedAnt[i] =
@@ -95,7 +101,7 @@ public class AntAgent extends Agent {
 
     // pheromoneLevel[i] = the pheromone level on the ith road from cityGrid;
 //    private double[] pheromoneLevel;
-    private double[][] subjectivePheromoneLevel;
+    private List<Double[]> subjectivePheromoneLevel;
 
     private List<CityRoad> cityGrid = null;
 
@@ -110,13 +116,14 @@ public class AntAgent extends Agent {
     }
 
     /**
-     * Return the index of the given agent name.
-     *
-     * @param agentName the name of the agent with an unknown agent.
-     * @return the agent index.
+     * This method will be used for generating new pheromone arrays.
+     * @param size the size of the new array;
+     * @return the new pheromone array.
      */
-    private Integer getAntId(String agentName) {
-        return agentIdentifiers.indexOf(agentName);
+    private Double[] generateNewPheromoneArray(int size){
+        Double[] result = new Double[size];
+        Arrays.fill(result, 0.0);
+        return result;
     }
 
     /**
@@ -131,7 +138,7 @@ public class AntAgent extends Agent {
     private List<Double> getNextStateProbability(long currentCity, List<Long> availableCities) {
         return AntAgentMechanics.getNextStateProbability(currentCity, availableCities,
                 cityGrid,
-                subjectivePheromoneLevel[myAgentIndex], betaParameter);
+                subjectivePheromoneLevel.get(0), betaParameter);
     }
 
     /**
@@ -144,17 +151,39 @@ public class AntAgent extends Agent {
                     .MatchConversationId(UPDATE_NEIGHBOR_STATUS);
             ACLMessage updateStatusMessage = myAgent.receive(messageTemplate);
             if (updateStatusMessage != null) {
-                String senderName = getAgentNickname(updateStatusMessage.getSender().getName());
+                AID senderAID = updateStatusMessage.getSender();
                 boolean newStatus = Integer.parseInt(updateStatusMessage.getContent()) == 1;
-                int senderIndex = agentIdentifiers.indexOf(senderName);
+                int senderIndex = antAgents.indexOf(senderAID);
                 finishedAnt[senderIndex] = newStatus;
-                System.out.println(getAgentNickname(myAgent.getName()) + ": " + senderName +
+                System.out.println(myAgent.getName() + ": " + senderAID.getName() +
                         "changed its status to " + newStatus);
             }
             else {
                 block();
             }
         }
+    }
+
+    /**
+     * get all the new agents.
+     * @return an array containing the other agents' identifiers.
+     */
+    private List<AID> updateAgentsList(){
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription serviceDescription = new ServiceDescription();
+        serviceDescription.setType(TOUR_FINDING_SERVICE);
+        serviceDescription.setName(TOUR_FINDING_SERVICE);
+        template.addServices(serviceDescription);
+        List<AID> newAgents = new ArrayList<AID>();
+        try{
+            DFAgentDescription[] result = DFService.search(this, template);
+            for (DFAgentDescription dfAgentDescription : result) {
+                newAgents.add(dfAgentDescription.getName());
+            }
+        }catch (FIPAException fe){
+            System.err.println(getName() + ": failed to obtain all the new agents");
+        }
+        return newAgents;
     }
 
     /**
@@ -182,16 +211,22 @@ public class AntAgent extends Agent {
         public void action() {
             switch (state) {
                 case 0:
-                    System.out.println(getAgentNickname(myAgent.getName()) + ": starting...");
+                    System.out.println(myAgent.getName() + ": starting...");
                     // start the agent:
 
                     // reset the cityIsVisited array:
                     Arrays.fill(cityIsVisited, false);
-                    // inform the other ants that you haven:
+                    antAgents = updateAgentsList();
+                    finishedAnt = Arrays.copyOf(finishedAnt, antAgents.size());
+                    int originalSize = subjectivePheromoneLevel.size();
+                    for(int i = originalSize;i < finishedAnt.length;i++){
+                        subjectivePheromoneLevel.add(generateNewPheromoneArray(cityGrid.size()));
+                    }
+                    // inform the other ants that you haven't finished:
                     ACLMessage informNotFinished = new ACLMessage(ACLMessage.INFORM);
-                    for (String agentIdentifier : agentIdentifiers) {
-                        if (!agentIdentifier.equals(getAgentNickname(myAgent.getName())))
-                            informNotFinished.addReceiver(new AID(agentIdentifier, AID.ISLOCALNAME));
+                    for (AID antAgent : antAgents) {
+                        if(!antAgent.equals(myAgent.getAID()))
+                            informNotFinished.addReceiver(antAgent);
                     }
                     informNotFinished.setLanguage("English");
                     informNotFinished.setConversationId(UPDATE_NEIGHBOR_STATUS);
@@ -208,6 +243,8 @@ public class AntAgent extends Agent {
                                     !cityIsVisited[Math.toIntExact(cityRoad.targetId)])
                             .map(cityRoad -> cityRoad.targetId)
                             .collect(Collectors.toList());
+                    // update the index of the current agent:
+
                     // compute the city probabilities (random-proportional rule):
                     List<Double> nextStateProbabilities = getNextStateProbability(currentCity, possibleCities);
                     // using these next state probabilities, choose the next location:
@@ -253,8 +290,6 @@ public class AntAgent extends Agent {
                 cityGrid.add(new CityRoad(Long.parseLong(values[1]), Long.parseLong(values[0]),
                         Double.parseDouble(values[2])));
             }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -276,8 +311,6 @@ public class AntAgent extends Agent {
     }
 
     protected void setup() {
-        myAgentNickname = getAgentNickname(getAgentNickname(this.getAID().getName()));
-        myAgentIndex = agentIdentifiers.indexOf(myAgentNickname);
         try {
             Object[] args = getArguments();
             if (args == null || args.length == 0) {
@@ -285,18 +318,39 @@ public class AntAgent extends Agent {
             }
             // get the number of iterations:
             numberOfIterations = Integer.parseInt((String) args[0]);
-            // create the finishedAnt array:
-            this.finishedAnt = new boolean[NUMBER_OF_ANTS];
+
+            // initialize the antAgents list:
+            antAgents = new ArrayList<>();
+            antAgents.add(this.getAID());
+
+            // register to the yellow-pages:
+            DFAgentDescription dfAgentDescription = new DFAgentDescription();
+            dfAgentDescription.setName(getAID());
+            ServiceDescription serviceDescription = new ServiceDescription();
+            serviceDescription.setType(TOUR_FINDING_SERVICE);
+            serviceDescription.setName(TOUR_FINDING_SERVICE);
+            dfAgentDescription.addServices(serviceDescription);
+            try{
+                DFService.register(this, dfAgentDescription);
+            }catch (FIPAException fe){
+                System.err.println(getName() +
+                        ": failed to register to the yellow pages: " +
+                        fe.getMessage());
+            }
             // read the environment graph:
             readGrid();
             // create the cityIsVisited array:
             cityIsVisited = new boolean[numberOfCities];
-            // create the pheromone matrix:
-            subjectivePheromoneLevel = new double[NUMBER_OF_ANTS][cityGrid.size()];
-            for (int i = 0; i < NUMBER_OF_ANTS; i++) {
-                subjectivePheromoneLevel[i] = new double[cityGrid.size()];
-                Arrays.fill(subjectivePheromoneLevel[i], 0);
-            }
+
+            // initialize the subjectivePheromoneLevel list:
+            subjectivePheromoneLevel = new ArrayList<>();
+            Double[] auxPheromoneLevels = generateNewPheromoneArray(cityGrid.size());
+            subjectivePheromoneLevel.add(auxPheromoneLevels);
+
+            // initialize the finishedAnt array:
+            finishedAnt = new boolean[1];
+            finishedAnt[0] = false;
+
             System.out.println("cityGrid length: " + cityGrid.size());
             // add the FindTourBehaviour behaviour:
             addBehaviour(new FindTourBehaviour());
@@ -304,6 +358,19 @@ public class AntAgent extends Agent {
             addBehaviour(new UpdateFriendStatusServer());
         } catch (Exception e) {
             System.err.println(e.getMessage());
+        }
+    }
+
+    @Override
+    protected void takeDown(){
+        // de-register from the DF's yellow pages service:
+        try{
+            DFService.deregister(this);
+        }
+        catch (FIPAException fe){
+            System.err.println(getName() +
+                    ": failed to de-register from the yellow pages: "
+                    + fe.getMessage());
         }
     }
 
