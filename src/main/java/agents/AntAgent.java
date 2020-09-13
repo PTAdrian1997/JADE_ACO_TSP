@@ -3,19 +3,17 @@ package agents;
 import agents.mechanics.AntAgentMechanics;
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.TickerBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
-import java.beans.IntrospectionException;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,11 +40,11 @@ public class AntAgent extends Agent {
     private int sourceCity = -1;
     // how many iterations should this agent run:
     private int numberOfIterations;
-    private int currentIteration;
     /**
      * status = false, if the agent hasn't found a hamiltonian cycle yet, or true, otherwise;
      */
     private boolean status = false;
+    private String myAgentNickname;
 
     /**
      * finishedAnt[i] =
@@ -107,7 +105,7 @@ public class AntAgent extends Agent {
      * @param agentName the full name of the agent
      * @return the actual name of the agent.
      */
-    private String getActualAgentName(String agentName) {
+    private String getAgentNickname(String agentName) {
         return agentName.split("@")[0];
     }
 
@@ -146,12 +144,15 @@ public class AntAgent extends Agent {
                     .MatchConversationId(UPDATE_NEIGHBOR_STATUS);
             ACLMessage updateStatusMessage = myAgent.receive(messageTemplate);
             if (updateStatusMessage != null) {
-                String senderName = getActualAgentName(updateStatusMessage.getSender().getName());
+                String senderName = getAgentNickname(updateStatusMessage.getSender().getName());
                 boolean newStatus = Integer.parseInt(updateStatusMessage.getContent()) == 1;
                 int senderIndex = agentIdentifiers.indexOf(senderName);
                 finishedAnt[senderIndex] = newStatus;
-                System.out.println(getActualAgentName(myAgent.getName()) + ": " + senderName +
+                System.out.println(getAgentNickname(myAgent.getName()) + ": " + senderName +
                         "changed its status to " + newStatus);
+            }
+            else {
+                block();
             }
         }
     }
@@ -172,15 +173,16 @@ public class AntAgent extends Agent {
      * if that's the case, repeat the process;
      * );
      */
-    public class FindTourBehaviour extends CyclicBehaviour {
+    public class FindTourBehaviour extends Behaviour {
 
         private int state = 0;
         private long currentCity = sourceCity;
+        private int currentEpoch = 0;
 
         public void action() {
             switch (state) {
                 case 0:
-                    System.out.println(getActualAgentName(myAgent.getName()) + ": starting...");
+                    System.out.println(getAgentNickname(myAgent.getName()) + ": starting...");
                     // start the agent:
 
                     // reset the cityIsVisited array:
@@ -188,7 +190,7 @@ public class AntAgent extends Agent {
                     // inform the other ants that you haven:
                     ACLMessage informNotFinished = new ACLMessage(ACLMessage.INFORM);
                     for (String agentIdentifier : agentIdentifiers) {
-                        if (!agentIdentifier.equals(getActualAgentName(myAgent.getName())))
+                        if (!agentIdentifier.equals(getAgentNickname(myAgent.getName())))
                             informNotFinished.addReceiver(new AID(agentIdentifier, AID.ISLOCALNAME));
                     }
                     informNotFinished.setLanguage("English");
@@ -208,7 +210,7 @@ public class AntAgent extends Agent {
                             .collect(Collectors.toList());
                     // compute the city probabilities (random-proportional rule):
                     List<Double> nextStateProbabilities = getNextStateProbability(currentCity, possibleCities);
-
+                    // using these next state probabilities, choose the next location:
                     break;
                 case 2:
                     // a hamiltonian route has been found: wait for the other ants to finish:
@@ -217,6 +219,11 @@ public class AntAgent extends Agent {
                     // the number of iterations has been exceeded:
                     break;
             }
+        }
+
+        @Override
+        public boolean done() {
+            return currentEpoch == numberOfIterations;
         }
     }
 
@@ -269,7 +276,8 @@ public class AntAgent extends Agent {
     }
 
     protected void setup() {
-        myAgentIndex = agentIdentifiers.indexOf(getActualAgentName(this.getAID().getName()));
+        myAgentNickname = getAgentNickname(getAgentNickname(this.getAID().getName()));
+        myAgentIndex = agentIdentifiers.indexOf(myAgentNickname);
         try {
             Object[] args = getArguments();
             if (args == null || args.length == 0) {
@@ -277,7 +285,6 @@ public class AntAgent extends Agent {
             }
             // get the number of iterations:
             numberOfIterations = Integer.parseInt((String) args[0]);
-            currentIteration = 0;
             // create the finishedAnt array:
             this.finishedAnt = new boolean[NUMBER_OF_ANTS];
             // read the environment graph:

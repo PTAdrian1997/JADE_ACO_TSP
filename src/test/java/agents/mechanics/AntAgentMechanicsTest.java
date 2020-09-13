@@ -23,7 +23,8 @@ public class AntAgentMechanicsTest {
         long currentCity = 1L;
         List<Long> availableCities = Arrays.asList(2L, 3L, 4L);
         double [] initialSubjectivePheromoneLevel = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-        double [] randomSubjectivePheromoneLevel = new double[]{1.23, 2.43, 1.14, 5.43, 2.54, 1.76};
+        double [] randomSubjectivePheromoneLevel = new double[]
+                {1.23, 2.43, 1.14, 5.43, 2.54, 1.76};
         double betaParameter = 1.50;
         List<Double> initialPheromoneResult = AntAgentMechanics.getNextStateProbability(
                 currentCity, availableCities, cityGrid, initialSubjectivePheromoneLevel,
@@ -37,7 +38,8 @@ public class AntAgentMechanicsTest {
                 currentCity, availableCities, cityGrid, randomSubjectivePheromoneLevel,
                 betaParameter
         );
-        List<Double> expectedRandomPheromoneResult = Arrays.asList(0.3881629942100124, 0.4460190182185986, 0.165817987571389);
+        List<Double> expectedRandomPheromoneResult = Arrays
+                .asList(0.3881629942100124, 0.4460190182185986, 0.165817987571389);
         System.out.print("\tfor a random pheromone level array: ");
         assertEquals(expectedRandomPheromoneResult, randomPheromoneResult);
         System.out.println("Passed");

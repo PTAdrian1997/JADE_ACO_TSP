@@ -41,4 +41,7 @@ public class AntAgentMechanics {
         return result;
     }
 
+    //TODO
+    public static Long selectNextCity(){return 0L;}
+
 }
