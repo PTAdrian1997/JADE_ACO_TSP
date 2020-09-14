@@ -50,7 +50,6 @@ public class AntAgent extends Agent {
      * status = false, if the agent hasn't found a hamiltonian cycle yet, or true, otherwise;
      */
     private boolean status = false;
-//    private String myAgentNickname;
 
     /**
      * finishedAnt[i] =
@@ -106,16 +105,6 @@ public class AntAgent extends Agent {
     private List<CityRoad> cityGrid = null;
 
     /**
-     * Get the actual name of the agent from the one obtain with getName().
-     *
-     * @param agentName the full name of the agent
-     * @return the actual name of the agent.
-     */
-    private String getAgentNickname(String agentName) {
-        return agentName.split("@")[0];
-    }
-
-    /**
      * This method will be used for generating new pheromone arrays.
      * @param size the size of the new array;
      * @return the new pheromone array.
@@ -167,7 +156,7 @@ public class AntAgent extends Agent {
                     newAgents.add(dfAgentDescription.getName());
             }
         }catch (FIPAException fe){
-            System.err.println(getName() + ": failed to obtain all the new agents");
+            System.out.println(getName() + ": failed to obtain all the new agents");
         }
         return newAgents;
     }
@@ -191,22 +180,25 @@ public class AntAgent extends Agent {
     public class FindTourBehaviour extends Behaviour {
 
         private int state = 0;
-        private long currentCity = sourceCity;
         private int currentEpoch = 0;
+        private List<Integer> currentPath = new ArrayList<>();
+        private long currentCity = -1;
 
         public void action() {
             switch (state) {
                 case 0:
                     System.out.println(myAgent.getName() + ": starting...");
                     // start the agent:
-
+                    currentCity = sourceCity;
                     // reset the cityIsVisited array:
+                    currentPath.clear();
                     Arrays.fill(cityIsVisited, false);
+                    cityIsVisited[Math.toIntExact(currentCity) - 1] = true;
                     antAgents = new ArrayList<>();
                     antAgents.add(myAgent.getAID());
                     antAgents.addAll(updateAgentsList());
+//                    System.out.println(myAgent.getName() + ": neighbors=" + antAgents.toString());
                     finishedAnt = Arrays.copyOf(finishedAnt, antAgents.size());
-                    System.out.println(myAgent.getName() + ": finishedAnt size=" + finishedAnt.length);
                     int originalSize = subjectivePheromoneLevel.size();
                     for(int i = originalSize;i < finishedAnt.length;i++){
                         subjectivePheromoneLevel.add(generateNewPheromoneArray(cityGrid.size()));
@@ -232,6 +224,7 @@ public class AntAgent extends Agent {
                                     !cityIsVisited[Math.toIntExact(cityRoad.targetId) - 1])
                             .map(cityRoad -> cityRoad.targetId)
                             .collect(Collectors.toList());
+                    System.out.println(myAgent.getName() + ": possibleCities=" + possibleCities.toString());
                     // update the index of the current agent:
 
                     // compute the city probabilities (random-proportional rule):
@@ -241,14 +234,25 @@ public class AntAgent extends Agent {
                             subjectivePheromoneLevel.get(0), betaParameter);
                     // using these next state probabilities, choose the next location:
                     Long nextCity = AntAgentMechanics.selectNextCity(possibleCities, nextStateProbabilities);
+                    System.out.println(myAgent.getName() + ": nextCity=" + nextCity);
                     // move to this next city:
+                    int nextEdgeIndex = 0;
+                    while(nextEdgeIndex < cityGrid.size()) {
+                        CityRoad currentRoad = cityGrid.get(nextEdgeIndex);
+                        if(currentRoad.sourceId == currentCity && currentRoad.targetId.equals(nextCity))break;
+                        nextEdgeIndex += 1;
+                    }
+                    currentPath.add(nextEdgeIndex);
                     currentCity = nextCity;
                     cityIsVisited[Math.toIntExact(nextCity) - 1] = true;
-                    if(currentCity == sourceCity){
+                    int lastCityVisited = 0;
+                    while(lastCityVisited < cityIsVisited.length && cityIsVisited[lastCityVisited])lastCityVisited ++;
+                    if(lastCityVisited == cityIsVisited.length){
                         // move to the next state:
                         state = 2;
                         status = true;
                         currentEpoch += 1;
+                        finishedAnt[0] = true;
                         System.out.println(myAgent.getName() + ": found a hamiltonian route");
                         // inform the others that you've finished:
                         ACLMessage informFinished = new ACLMessage(ACLMessage.INFORM);
@@ -261,24 +265,27 @@ public class AntAgent extends Agent {
                         informFinished.setContent("1");
                         myAgent.send(informFinished);
                     }
+                    else {
+                        state = 1;
+                    }
                     break;
                 case 2:
                     // a hamiltonian route has been found: wait for the other ants to finish:
 
                     // check if all the ants have finished:
-                    int lastFinished = 0;
-                    while (lastFinished < finishedAnt.length && finishedAnt[lastFinished])lastFinished++;
-//                    System.out.println(myAgent.getName() + ": current lastFinished=" + lastFinished);
-                    if(lastFinished == finishedAnt.length){
-                        System.out.println(myAgent.getName() + ": all the ants have found a hamiltonian tour");
+//                    int lastFinished = -1;
+//                    while (lastFinished < finishedAnt.length - 1 && finishedAnt[lastFinished + 1])lastFinished++;
+////                    System.out.println(myAgent.getName() + ": current lastFinished=" + lastFinished + ", finishedAnt length=" + finishedAnt.length);
+//                    if(lastFinished == finishedAnt.length - 1){
+//                        System.out.println(myAgent.getName() + ": all the ants have found a hamiltonian tour");
 //                        if(currentEpoch == numberOfIterations){
 //                            state = 3;
 //                        }
 //                        else {
 //                            state = 0;
 //                        }
-                        state = 3;
-                    }
+//                        state = 3;
+//                    }
                     break;
                 case 3:
                     // the number of iterations has been exceeded:
@@ -362,7 +369,7 @@ public class AntAgent extends Agent {
             try{
                 DFService.register(this, dfAgentDescription);
             }catch (FIPAException fe){
-                System.err.println(getName() +
+                System.out.println(getName() +
                         ": failed to register to the yellow pages: " +
                         fe.getMessage());
             }
@@ -396,7 +403,7 @@ public class AntAgent extends Agent {
             DFService.deregister(this);
         }
         catch (FIPAException fe){
-            System.err.println(getName() +
+            System.out.println(getName() +
                     ": failed to de-register from the yellow pages: "
                     + fe.getMessage());
         }
