@@ -224,7 +224,6 @@ public class AntAgent extends Agent {
                                     !cityIsVisited[Math.toIntExact(cityRoad.targetId) - 1])
                             .map(cityRoad -> cityRoad.targetId)
                             .collect(Collectors.toList());
-                    System.out.println(myAgent.getName() + ": possibleCities=" + possibleCities.toString());
                     // update the index of the current agent:
 
                     // compute the city probabilities (random-proportional rule):
@@ -234,7 +233,6 @@ public class AntAgent extends Agent {
                             subjectivePheromoneLevel.get(0), betaParameter);
                     // using these next state probabilities, choose the next location:
                     Long nextCity = AntAgentMechanics.selectNextCity(possibleCities, nextStateProbabilities);
-                    System.out.println(myAgent.getName() + ": nextCity=" + nextCity);
                     // move to this next city:
                     int nextEdgeIndex = 0;
                     while(nextEdgeIndex < cityGrid.size()) {
@@ -273,19 +271,19 @@ public class AntAgent extends Agent {
                     // a hamiltonian route has been found: wait for the other ants to finish:
 
                     // check if all the ants have finished:
-//                    int lastFinished = -1;
-//                    while (lastFinished < finishedAnt.length - 1 && finishedAnt[lastFinished + 1])lastFinished++;
-////                    System.out.println(myAgent.getName() + ": current lastFinished=" + lastFinished + ", finishedAnt length=" + finishedAnt.length);
-//                    if(lastFinished == finishedAnt.length - 1){
-//                        System.out.println(myAgent.getName() + ": all the ants have found a hamiltonian tour");
-//                        if(currentEpoch == numberOfIterations){
-//                            state = 3;
-//                        }
-//                        else {
-//                            state = 0;
-//                        }
-//                        state = 3;
-//                    }
+                    int lastFinished = -1;
+                    while (lastFinished < finishedAnt.length - 1 && finishedAnt[lastFinished + 1])
+                        lastFinished++;
+//                    System.out.println(myAgent.getName() + ": current lastFinished=" + lastFinished + ", finishedAnt length=" + finishedAnt.length);
+                    if(lastFinished == finishedAnt.length - 1){
+                        System.out.println(myAgent.getName() + ": all the ants have found a hamiltonian tour");
+                        if(currentEpoch == numberOfIterations){
+                            state = 3;
+                        }
+                        else {
+                            state = 0;
+                        }
+                    }
                     break;
                 case 3:
                     // the number of iterations has been exceeded:
@@ -295,7 +293,9 @@ public class AntAgent extends Agent {
 
         @Override
         public boolean done() {
-            return currentEpoch == numberOfIterations;
+            boolean result = currentEpoch == numberOfIterations;
+            if(result) System.out.println(myAgent.getName() + ": shutting down FindTourBehavor...");
+            return result;
         }
     }
 
@@ -391,6 +391,7 @@ public class AntAgent extends Agent {
             addBehaviour(new FindTourBehaviour());
             // add the behavior for updating the status of other ants:
             addBehaviour(new UpdateFriendStatusServer());
+
         } catch (Exception e) {
             System.err.println(e.getMessage());
         }
