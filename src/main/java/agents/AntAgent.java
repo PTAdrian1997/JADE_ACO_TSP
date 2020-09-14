@@ -127,21 +127,6 @@ public class AntAgent extends Agent {
     }
 
     /**
-     * This method will return a list L, where each element will be the probability that
-     * the city at the corresponding index will be the next one visited on the current tour.
-     *
-     * @param currentCity     the current city of the ant
-     * @param availableCities the list of all the cities where the ant can go next.
-     * @return the list containing, for each city from availableCities, the probability
-     * that the city will be the next station.
-     */
-    private List<Double> getNextStateProbability(long currentCity, List<Long> availableCities) {
-        return AntAgentMechanics.getNextStateProbability(currentCity, availableCities,
-                cityGrid,
-                subjectivePheromoneLevel.get(0), betaParameter);
-    }
-
-    /**
      * This behavior is used by AntAgent agents to update their perspective about
      * other ant, whenever the latter sends them an INFORM message;
      */
@@ -156,7 +141,7 @@ public class AntAgent extends Agent {
                 int senderIndex = antAgents.indexOf(senderAID);
                 finishedAnt[senderIndex] = newStatus;
                 System.out.println(myAgent.getName() + ": " + senderAID.getName() +
-                        "changed its status to " + newStatus);
+                        " changed its status to " + newStatus);
             }
             else {
                 block();
@@ -178,7 +163,8 @@ public class AntAgent extends Agent {
         try{
             DFAgentDescription[] result = DFService.search(this, template);
             for (DFAgentDescription dfAgentDescription : result) {
-                newAgents.add(dfAgentDescription.getName());
+                if(!dfAgentDescription.getName().equals(getAID()))
+                    newAgents.add(dfAgentDescription.getName());
             }
         }catch (FIPAException fe){
             System.err.println(getName() + ": failed to obtain all the new agents");
@@ -216,8 +202,11 @@ public class AntAgent extends Agent {
 
                     // reset the cityIsVisited array:
                     Arrays.fill(cityIsVisited, false);
-                    antAgents = updateAgentsList();
+                    antAgents = new ArrayList<>();
+                    antAgents.add(myAgent.getAID());
+                    antAgents.addAll(updateAgentsList());
                     finishedAnt = Arrays.copyOf(finishedAnt, antAgents.size());
+                    System.out.println(myAgent.getName() + ": finishedAnt size=" + finishedAnt.length);
                     int originalSize = subjectivePheromoneLevel.size();
                     for(int i = originalSize;i < finishedAnt.length;i++){
                         subjectivePheromoneLevel.add(generateNewPheromoneArray(cityGrid.size()));
@@ -240,17 +229,56 @@ public class AntAgent extends Agent {
                     // get the list of neighbour cities that haven't been visited yet:
                     List<Long> possibleCities = cityGrid.stream()
                             .filter(cityRoad -> cityRoad.sourceId == currentCity &&
-                                    !cityIsVisited[Math.toIntExact(cityRoad.targetId)])
+                                    !cityIsVisited[Math.toIntExact(cityRoad.targetId) - 1])
                             .map(cityRoad -> cityRoad.targetId)
                             .collect(Collectors.toList());
                     // update the index of the current agent:
 
                     // compute the city probabilities (random-proportional rule):
-                    List<Double> nextStateProbabilities = getNextStateProbability(currentCity, possibleCities);
+                    List<Double> nextStateProbabilities = AntAgentMechanics.getNextStateProbability(currentCity,
+                            possibleCities,
+                            cityGrid,
+                            subjectivePheromoneLevel.get(0), betaParameter);
                     // using these next state probabilities, choose the next location:
+                    Long nextCity = AntAgentMechanics.selectNextCity(possibleCities, nextStateProbabilities);
+                    // move to this next city:
+                    currentCity = nextCity;
+                    cityIsVisited[Math.toIntExact(nextCity) - 1] = true;
+                    if(currentCity == sourceCity){
+                        // move to the next state:
+                        state = 2;
+                        status = true;
+                        currentEpoch += 1;
+                        System.out.println(myAgent.getName() + ": found a hamiltonian route");
+                        // inform the others that you've finished:
+                        ACLMessage informFinished = new ACLMessage(ACLMessage.INFORM);
+                        for (AID antAgent : antAgents) {
+                            if(!antAgent.equals(myAgent.getAID()))
+                                informFinished.addReceiver(antAgent);
+                        }
+                        informFinished.setLanguage("English");
+                        informFinished.setConversationId(UPDATE_NEIGHBOR_STATUS);
+                        informFinished.setContent("1");
+                        myAgent.send(informFinished);
+                    }
                     break;
                 case 2:
                     // a hamiltonian route has been found: wait for the other ants to finish:
+
+                    // check if all the ants have finished:
+                    int lastFinished = 0;
+                    while (lastFinished < finishedAnt.length && finishedAnt[lastFinished])lastFinished++;
+//                    System.out.println(myAgent.getName() + ": current lastFinished=" + lastFinished);
+                    if(lastFinished == finishedAnt.length){
+                        System.out.println(myAgent.getName() + ": all the ants have found a hamiltonian tour");
+//                        if(currentEpoch == numberOfIterations){
+//                            state = 3;
+//                        }
+//                        else {
+//                            state = 0;
+//                        }
+                        state = 3;
+                    }
                     break;
                 case 3:
                     // the number of iterations has been exceeded:
@@ -281,6 +309,7 @@ public class AntAgent extends Agent {
             String[] firstLine = bufferedReader.readLine().split(" ");
             numberOfCities = Integer.parseInt(firstLine[0]);
             sourceCity = Integer.parseInt(firstLine[1]);
+            betaParameter = Double.parseDouble(firstLine[2]);
             String currentLine;
             while ((currentLine = bufferedReader.readLine()) != null) {
                 String[] values = currentLine.split(" ");
@@ -351,7 +380,6 @@ public class AntAgent extends Agent {
             finishedAnt = new boolean[1];
             finishedAnt[0] = false;
 
-            System.out.println("cityGrid length: " + cityGrid.size());
             // add the FindTourBehaviour behaviour:
             addBehaviour(new FindTourBehaviour());
             // add the behavior for updating the status of other ants:

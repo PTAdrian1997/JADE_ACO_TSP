@@ -8,6 +8,18 @@ import java.util.stream.Collectors;
 
 public class AntAgentMechanics {
 
+    /**
+     * Compute the list of probabilities for each next possible city.
+     * @param currentCity the city where the ant is currently placed.
+     * @param availableCities the list of all next possible cities.
+     * @param cityGrid the list of roads.
+     * @param subjectivePheromoneLevel the array containing all the pheromone
+     *                                 levels for each available city.
+     * @param betaParameter the parameter that determines the relative importance of
+     *                      pheromone versus distance;
+     * @return the list of probabilities, each probability being associated with the
+     *          city at the same index from availableCity
+     */
     public static List<Double> getNextStateProbability(
             long currentCity, List<Long> availableCities,
             List<AntAgent.CityRoad> cityGrid,
@@ -41,7 +53,23 @@ public class AntAgentMechanics {
         return result;
     }
 
-    //TODO
-    public static Long selectNextCity(){return 0L;}
+    /**
+     * select the best candidate from the given set of next possible cities
+     * @param availableCities the set of next possible cities
+     * @param nextStateProbabilities the list of probabilities associated with the
+     *                               given availableCities
+     * @return the best next city candidate
+     */
+    public static Long selectNextCity(
+            List<Long> availableCities,
+            List<Double> nextStateProbabilities
+    ){
+        int maxIndex = -1;
+        for(int i = 0;i < nextStateProbabilities.size();i++){
+            if(maxIndex == -1 || nextStateProbabilities.get(maxIndex) < nextStateProbabilities.get(i))
+                maxIndex = i;
+        }
+        return availableCities.get(maxIndex);
+    }
 
 }
