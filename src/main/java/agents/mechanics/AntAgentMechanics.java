@@ -3,6 +3,7 @@ package agents.mechanics;
 import agents.AntAgent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -70,6 +71,36 @@ public class AntAgentMechanics {
                 maxIndex = i;
         }
         return availableCities.get(maxIndex);
+    }
+
+    /**
+     * Get the new pheromone level array after an iteration
+     * @param currentPheromoneLevel the pheromone levels that were used by the ant agents in the last iteration
+     * @param antPaths The paths chosen by each ant in the last iteration
+     * @param cityGrid the roads of the current city
+     * @param tourLengths the lengths of the paths chosen by the agents in the last iteration
+     * @param pheromoneDecayParameter a real number from the interval [0,1] that determines how much pheromone
+     *                                should evaporate after an iteration
+     * @return an array of Doubles containing the new pheromone levels
+     */
+    public static Double[] updatePheromoneLevel(
+            Double[] currentPheromoneLevel, List<List<Integer>> antPaths,
+            List<AntAgent.CityRoad> cityGrid,
+            List<Double> tourLengths,
+            double pheromoneDecayParameter
+            ){
+        Double[] globalPheromoneLevels = Arrays.copyOf(currentPheromoneLevel, currentPheromoneLevel.length);
+        double deltaPheromone = 0.0;
+        for(int edgeIndex = 0;edgeIndex < cityGrid.size();edgeIndex++){
+            // update edge at the given index in the cityGrid List:
+            double deltaSum = 0.0;
+            for(int antIndex = 0;antIndex < antPaths.size();antIndex++){
+                if(antPaths.get(antIndex).contains(edgeIndex))deltaSum += 1.0 / tourLengths.get(antIndex);
+            }
+            globalPheromoneLevels[edgeIndex] = (1 - pheromoneDecayParameter) * currentPheromoneLevel[edgeIndex] +
+                    deltaSum;
+        }
+        return globalPheromoneLevels;
     }
 
 }
