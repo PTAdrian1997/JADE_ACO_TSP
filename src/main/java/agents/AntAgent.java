@@ -11,6 +11,7 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import writer.Writer;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -152,8 +153,8 @@ public class AntAgent extends Agent {
                                     .collect(Collectors.toList()));
                 }
 
-                System.out.println(myAgent.getName() + ": " + senderAID.getName() +
-                        " changed its status to " + newStatus);
+//                System.out.println(myAgent.getName() + ": " + senderAID.getName() +
+//                        " changed its status to " + newStatus);
             } else {
                 block();
             }
@@ -204,14 +205,12 @@ public class AntAgent extends Agent {
 
         private int state = 0;
         private int currentEpoch = 0;
-        //        private List<Integer> currentPath = new ArrayList<>();
         private long currentCity = -1;
-//        private double currentTourLength = 0;
 
         public void action() {
             switch (state) {
                 case 0:
-                    System.out.println(myAgent.getName() + ": starting...");
+//                    System.out.println(myAgent.getName() + ": starting...");
                     // start the agent:
                     currentCity = sourceCity;
 
@@ -301,7 +300,7 @@ public class AntAgent extends Agent {
                         status = true;
                         currentEpoch += 1;
                         finishedAnt[0] = true;
-                        System.out.println(myAgent.getName() + ": found a hamiltonian route");
+//                        System.out.println(myAgent.getName() + ": found a hamiltonian route");
                         // inform the others that you've finished, and send the current Tour length and the currentPath:
                         ACLMessage informFinished = new ACLMessage(ACLMessage.INFORM);
                         for (AID antAgent : antAgents) {
@@ -327,7 +326,7 @@ public class AntAgent extends Agent {
                     while (lastFinished < finishedAnt.length - 1 && finishedAnt[lastFinished + 1])
                         lastFinished++;
                     if (lastFinished == finishedAnt.length - 1) {
-                        System.out.println(myAgent.getName() + ": all the ants have found a hamiltonian tour");
+//                        System.out.println(myAgent.getName() + ": all the ants have found a hamiltonian tour");
                         // update the pheromone levels (global-updating rule):
                         Double[] newPheromoneLevels = AntAgentMechanics
                                 .updatePheromoneLevel(subjectivePheromoneLevel.get(0), antPaths, cityGrid, tourLengths,
@@ -349,7 +348,19 @@ public class AntAgent extends Agent {
         @Override
         public boolean done() {
             boolean result = currentEpoch == numberOfIterations;
-            if (result) System.out.println(myAgent.getName() + ": shutting down FindTourBehavor...");
+            if (result) {
+                // the ant that has the first name in alphabetical order is designated
+                // to write the pheromone levels:
+                int agentIndex = 1;
+                while(agentIndex < antAgents.size() &&
+                        antAgents.get(agentIndex).getName().compareTo(myAgent.getAID().getName()) > 0) agentIndex++;
+                if(agentIndex == antAgents.size()){
+                    System.out.println(myAgent.getName() + ": designated to write the results...");
+                    // write the results:
+                    Writer.write(subjectivePheromoneLevel.get(0), cityGrid);
+                }
+                System.out.println(myAgent.getName() + ": shutting down FindTourBehavor...");
+            }
             return result;
         }
     }

@@ -1,1 +1,1 @@
-java -cp jade.jar;classfiles jade.Boot -agents ant1:agents.AntAgent(10);ant2:agents.AntAgent(10);ant3:agents.AntAgent(10)
+java -cp jade.jar;classfiles jade.Boot -agents ant1:agents.AntAgent(100);ant2:agents.AntAgent(100);ant3:agents.AntAgent(100)
