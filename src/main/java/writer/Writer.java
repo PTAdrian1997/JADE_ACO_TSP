@@ -19,11 +19,6 @@ public class Writer {
         try {
             BufferedWriter bufferedWriter = new BufferedWriter(new
                     FileWriter("pheromone_levels.txt"));
-//            bufferedWriter.write(Arrays
-//                    .stream(pheromoneLevel)
-//                    .map(Object::toString)
-//                    .reduce("", (partialResult, currentEl) -> partialResult + " " + currentEl)
-//            );
             for(int roadIndex = 0;roadIndex < cityGrid.size();roadIndex++){
                 AntAgent.CityRoad currentRoad = cityGrid.get(roadIndex);
                 bufferedWriter.write(currentRoad.getSourceId() + " " + currentRoad.getTargetId() + " " +

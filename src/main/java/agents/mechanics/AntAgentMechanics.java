@@ -103,4 +103,20 @@ public class AntAgentMechanics {
         return globalPheromoneLevels;
     }
 
+    /**
+     *
+     * @param cityVisited
+     * @param lastRoad
+     * @param sourceCity
+     * @return
+     */
+    public static boolean tourCondition(boolean[] cityVisited,
+                                        AntAgent.CityRoad lastRoad,
+                                        long sourceCity
+    ){
+        for (boolean b : cityVisited) if (b) return false;
+        if(lastRoad.getTargetId() != sourceCity) return false;
+        return true;
+    }
+
 }
