@@ -525,7 +525,6 @@ public class AntAgent extends Agent {
             // initialize the edgeProbabilities array:
             edgeProbabilities = new Double[cityGrid.size()];
 
-
             // initialize the finishedAnt array:
             finishedAnt = new boolean[1];
             finishedAnt[0] = false;
