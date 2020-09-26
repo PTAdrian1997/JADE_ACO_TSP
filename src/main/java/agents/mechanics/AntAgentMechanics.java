@@ -66,19 +66,16 @@ public class AntAgentMechanics {
             List<Long> availableCities,
             List<Double> nextStateProbabilities
     ){
-        class Pair{Long cityIndex; Double probability;
+        class Pair{
+            final Long cityIndex;
+            final Double probability;
 
             public Pair(Long aLong, Double aDouble) {
                 cityIndex = aLong;
                 probability = aDouble;
             }
         }
-//        int maxIndex = -1;
-//        for(int i = 0;i < nextStateProbabilities.size();i++){
-//            if(maxIndex == -1 || nextStateProbabilities.get(maxIndex) < nextStateProbabilities.get(i))
-//                maxIndex = i;
-//        }
-//        return availableCities.get(maxIndex);
+
         List<Pair> zippedList = new ArrayList<>();
         for(int cityIndex = 0;cityIndex < availableCities.size();cityIndex ++){
             zippedList.add(new Pair(availableCities.get(cityIndex),

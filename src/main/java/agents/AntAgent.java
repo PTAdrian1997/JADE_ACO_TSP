@@ -93,8 +93,7 @@ public class AntAgent extends Agent {
         }
     }
 
-    // pheromoneLevel[i] = the pheromone level on the ith road from cityGrid;
-//    private List<Double[]> subjectivePheromoneLevel;
+    // subjectivePheromoneLevel[i] = the pheromone level on the ith road from cityGrid;
     private Double[] subjectivePheromoneLevel;
     // the paths chosen by the ants in the current iteration:
     private List<List<Integer>> antPaths;
@@ -249,11 +248,8 @@ public class AntAgent extends Agent {
                         tourLengths.add(0.0);
                     }
 
-                    // reset the finishedAnt array:
-                    finishedAnt = Arrays.copyOf(finishedAnt, antAgents.size());
-                    finishedAnt[0] = false;
-
-                    // reset the subjectivePheromoneLevel:
+                    // update the status of this ant in the Environment:
+                    Environment.updateFinishedAnt(myAgent.getName(), false);
 
                     // reset the edge stack:
                     edgeTrack = new Stack<>();
@@ -286,7 +282,6 @@ public class AntAgent extends Agent {
                     break;
                 case 1:
                     // the agent is still searching for the hamiltonian cycle:
-
                     if (edgeTrack.empty()) {
                         // this graph doesn't contain a hamiltonian tour:
                         System.out.println(myAgent.getName() + ": cannot find a hamiltonian tour...");
@@ -305,7 +300,9 @@ public class AntAgent extends Agent {
                             state = 2;
                             status = true;
                             currentEpoch += 1;
-                            finishedAnt[0] = true;
+                            // update the status of the ant in the Environment:
+                            Environment.updateFinishedAnt(myAgent.getName(), true);
+
                             System.out.println(myAgent.getName() + ": a hamiltonian path was found");
                             // inform the other ants that you've finished, and send them the current tour length and the
                             // current path:
@@ -376,26 +373,26 @@ public class AntAgent extends Agent {
                     // a hamiltonian route has been found: wait for the other ants to finish:
 
                     // check if all the ants have finished:
-                    boolean allAntsFinished = true;
-                    for (boolean b : finishedAnt) {
-                        if (!b) {
-                            allAntsFinished = false;
-                            break;
-                        }
-                    }
-                    if (allAntsFinished) {
-                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
-                        // update the pheromone levels:
-                        Double[] newPheromoneLevels = AntAgentMechanics.updatePheromoneLevel(
-                                subjectivePheromoneLevel, antPaths, cityGrid, tourLengths,
-                                pheromoneDecayParameter);
-                        subjectivePheromoneLevel = Arrays.copyOf(newPheromoneLevels, newPheromoneLevels.length);
-                    }
-                    if (currentEpoch == numberOfIterations) {
-                        state = 3;
-                    } else {
-                        state = 0;
-                    }
+//                    boolean allAntsFinished = true;
+//                    for (boolean b : finishedAnt) {
+//                        if (!b) {
+//                            allAntsFinished = false;
+//                            break;
+//                        }
+//                    }
+//                    if (allAntsFinished) {
+//                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
+//                        // update the pheromone levels:
+//                        Double[] newPheromoneLevels = AntAgentMechanics.updatePheromoneLevel(
+//                                subjectivePheromoneLevel, antPaths, cityGrid, tourLengths,
+//                                pheromoneDecayParameter);
+//                        subjectivePheromoneLevel = Arrays.copyOf(newPheromoneLevels, newPheromoneLevels.length);
+//                    }
+//                    if (currentEpoch == numberOfIterations) {
+//                        state = 3;
+//                    } else {
+//                        state = 0;
+//                    }
                     break;
                 case 3:
                     // the number of iterations has been exceeded:
