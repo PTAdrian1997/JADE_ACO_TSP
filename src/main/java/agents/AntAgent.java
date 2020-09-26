@@ -61,13 +61,6 @@ public class AntAgent extends Agent {
     private boolean[] finishedAnt;
 
     /**
-     * edgeProbabilities[i] =
-     * - the probability that the i-th edge from the cityGrid
-     * will be next
-     */
-    private Double[] edgeProbabilities;
-
-    /**
      * the class representing a city connection;
      */
     public static class CityRoad {
@@ -513,9 +506,6 @@ public class AntAgent extends Agent {
 
             // initialize the subjectivePheromoneLevel list:
             subjectivePheromoneLevel = generateNewPheromoneArray(cityGrid.size());
-
-            // initialize the edgeProbabilities array:
-            edgeProbabilities = new Double[cityGrid.size()];
 
             // initialize the finishedAnt array:
             finishedAnt = new boolean[1];
