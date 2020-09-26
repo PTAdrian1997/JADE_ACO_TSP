@@ -150,11 +150,12 @@ public class AntAgentMechanics {
      *                          ('1' - visited, '0' - not visited)
      * @return true if a hamiltonian tour found, false otherwise
      */
-    public static boolean tourCondition(String cityVisitedString, long sourceCity){
+    public static boolean tourCondition(String cityVisitedString, long sourceCity, long currentCity){
         for(int charIndex = 0;charIndex < cityVisitedString.length();charIndex++){
             if(cityVisitedString.charAt(charIndex) == '0')return false;
         }
         if(cityVisitedString.charAt(Math.toIntExact(sourceCity - 1)) != '2')return false;
+        if(sourceCity != currentCity)return false;
         return true;
     }
 

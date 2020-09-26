@@ -95,13 +95,14 @@ public class AntAgent extends Agent {
         }
 
         public String toString() {
-            return "CityRoad[" + this.targetId.toString() + "," +
-                    this.sourceId.toString() + "," + this.length + "]";
+            return "CityRoad[" + this.sourceId.toString() + "," +
+                    this.targetId.toString() + "," + this.length + "]";
         }
     }
 
     // pheromoneLevel[i] = the pheromone level on the ith road from cityGrid;
-    private List<Double[]> subjectivePheromoneLevel;
+//    private List<Double[]> subjectivePheromoneLevel;
+    private Double[] subjectivePheromoneLevel;
     // the paths chosen by the ants in the current iteration:
     private List<List<Integer>> antPaths;
     // the tour lengths of the agents:
@@ -260,23 +261,21 @@ public class AntAgent extends Agent {
                     finishedAnt[0] = false;
 
                     // reset the subjectivePheromoneLevel:
-                    int originalSize = subjectivePheromoneLevel.size();
-                    for (int i = originalSize; i < finishedAnt.length; i++) {
-                        subjectivePheromoneLevel.add(generateNewPheromoneArray(cityGrid.size()));
-                    }
 
                     // reset the edge stack:
                     edgeTrack = new Stack<>();
                     // add all the edges that start from the current city:
                     for (int edgeIndex = 0; edgeIndex < cityGrid.size(); edgeIndex++) {
-                        if (cityGrid.get(edgeIndex).getSourceId() == currentCity) {
+                        CityRoad currentRoad = cityGrid.get(edgeIndex);
+                        if (currentRoad.getSourceId() == currentCity) {
                             StringBuilder stringBuilder = new StringBuilder();
                             for (int cityIndex = 0; cityIndex < numberOfCities; cityIndex++) {
-                                if (cityIndex == currentCity - 1) stringBuilder.append(1);
+                                if (cityIndex == currentCity - 1 || cityIndex == currentRoad.getTargetId() - 1)
+                                    stringBuilder.append(1);
                                 else stringBuilder.append(0);
                             }
                             edgeTrack.add(new TrackConfiguration(edgeIndex, stringBuilder.toString(),
-                                    new ArrayList<>()));
+                                    new ArrayList<>(Collections.singletonList(edgeIndex))));
                         }
                     }
 
@@ -308,7 +307,7 @@ public class AntAgent extends Agent {
                         lastPath = new ArrayList<>(currentPath);
 
                         // check if the tour is complete:
-                        if (AntAgentMechanics.tourCondition(currentCityIsVisitedString, sourceCity)) {
+                        if (AntAgentMechanics.tourCondition(currentCityIsVisitedString, sourceCity, currentCity)) {
                             // change the state to 2:
                             state = 2;
                             status = true;
@@ -359,7 +358,7 @@ public class AntAgent extends Agent {
                             List<Double> nextStateProbabilities = AntAgentMechanics.getNextStateProbability(currentCity,
                                     possibleCities.stream().map(pair -> pair.cityIndex).collect(Collectors.toList()),
                                     cityGrid,
-                                    subjectivePheromoneLevel.get(0), betaParameter);
+                                    subjectivePheromoneLevel, betaParameter);
 
                             // add the edges corresponding to the next cities in edgeTrack, in ascending order of the
                             // probability:
@@ -395,9 +394,9 @@ public class AntAgent extends Agent {
                         System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
                         // update the pheromone levels:
                         Double[] newPheromoneLevels = AntAgentMechanics.updatePheromoneLevel(
-                                subjectivePheromoneLevel.get(0), antPaths, cityGrid, tourLengths,
+                                subjectivePheromoneLevel, antPaths, cityGrid, tourLengths,
                                 pheromoneDecayParameter);
-                        subjectivePheromoneLevel.set(0, newPheromoneLevels);
+                        subjectivePheromoneLevel = Arrays.copyOf(newPheromoneLevels, newPheromoneLevels.length);
                     }
                     if (currentEpoch == numberOfIterations) {
                         state = 3;
@@ -423,10 +422,11 @@ public class AntAgent extends Agent {
                 if (agentIndex == antAgents.size()) {
                     System.out.println(myAgent.getName() + ": designated to write the results...");
                     // write the results:
-                    Writer.write(subjectivePheromoneLevel.get(0), cityGrid);
+                    Writer.write(subjectivePheromoneLevel, cityGrid);
                     Writer.write(lastPath);
                 }
-                System.out.println(myAgent.getName() + ": " + lastPath.toString() + ", " + tourLengths.get(0));
+                System.out.println(myAgent.getName() + ": " + lastPath.stream().map(id -> cityGrid.get(id))
+                        .collect(Collectors.toList()).toString() + ", " + tourLengths.get(0));
                 System.out.println(myAgent.getName() + ": shutting down FindTourBehavor...");
             }
             return numberOfIterationsReached || deadEndReached;
@@ -512,9 +512,7 @@ public class AntAgent extends Agent {
             readGrid();
 
             // initialize the subjectivePheromoneLevel list:
-            subjectivePheromoneLevel = new ArrayList<>();
-            Double[] auxPheromoneLevels = generateNewPheromoneArray(cityGrid.size());
-            subjectivePheromoneLevel.add(auxPheromoneLevels);
+            subjectivePheromoneLevel = generateNewPheromoneArray(cityGrid.size());
 
             // initialize the edgeProbabilities array:
             edgeProbabilities = new Double[cityGrid.size()];
