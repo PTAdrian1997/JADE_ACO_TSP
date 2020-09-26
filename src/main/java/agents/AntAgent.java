@@ -61,13 +61,6 @@ public class AntAgent extends Agent {
     private boolean[] finishedAnt;
 
     /**
-     * cityIsVisited[i] =
-     * - true, if the ith city has already been visited
-     * - false otherwise
-     */
-    private boolean[] cityIsVisited;
-
-    /**
      * edgeProbabilities[i] =
      * - the probability that the i-th edge from the cityGrid
      * will be next
@@ -211,6 +204,7 @@ public class AntAgent extends Agent {
         private int state = 0;
         private int currentEpoch = 0;
         private long currentCity = -1;
+        private long sourceCity = -1;
         Random random = new Random();
         boolean deadEndReached = false;
         List<Integer> lastPath = null;
@@ -236,15 +230,12 @@ public class AntAgent extends Agent {
         public void action() {
             switch (state) {
                 case 0:
-//                    System.out.println(myAgent.getName() + ": starting...");
+                    System.out.println(myAgent.getName() + ": starting...");
                     // start the agent:
 
                     // start from a randomly chosen city:
-                    currentCity = random.nextInt(numberOfCities) + 1;
-
-                    // reset the cityIsVisited array:
-                    Arrays.fill(cityIsVisited, false);
-                    cityIsVisited[Math.toIntExact(currentCity) - 1] = true;
+                    sourceCity = random.nextInt(numberOfCities) + 1;
+                    currentCity = sourceCity;
 
                     // update the antAgents list:
                     antAgents = new ArrayList<>();
@@ -306,8 +297,7 @@ public class AntAgent extends Agent {
 
                     if (edgeTrack.empty()) {
                         // this graph doesn't contain a hamiltonian tour:
-//                        System.out.println(myAgent.getName() + ": cannot find a hamiltonian tour...");
-                        //deadEndReached = true;
+                        System.out.println(myAgent.getName() + ": cannot find a hamiltonian tour...");
                         state = 0;
                     } else {
                         // get the last possible edge from the stack:
@@ -318,13 +308,13 @@ public class AntAgent extends Agent {
                         lastPath = new ArrayList<>(currentPath);
 
                         // check if the tour is complete:
-                        if (AntAgentMechanics.tourCondition(currentCityIsVisitedString, cityGrid, currentCity, sourceCity)) {
+                        if (AntAgentMechanics.tourCondition(currentCityIsVisitedString, sourceCity)) {
                             // change the state to 2:
                             state = 2;
                             status = true;
                             currentEpoch += 1;
                             finishedAnt[0] = true;
-//                            System.out.println(myAgent.getName() + ": a hamiltonian path was found");
+                            System.out.println(myAgent.getName() + ": a hamiltonian path was found");
                             // inform the other ants that you've finished, and send them the current tour length and the
                             // current path:
                             ACLMessage informFinished = new ACLMessage(ACLMessage.INFORM);
@@ -357,8 +347,10 @@ public class AntAgent extends Agent {
                             List<EdgeCityPair> possibleCities = new ArrayList<>();
                             for (int edgeIndex = 0; edgeIndex < cityGrid.size(); edgeIndex++) {
                                 CityRoad currentEdge = cityGrid.get(edgeIndex);
-                                if (currentEdge.sourceId == currentCity && currentCityIsVisitedString
-                                        .charAt(Math.toIntExact(currentEdge.getTargetId() - 1)) == '0') {
+                                if (currentEdge.getSourceId() == currentCity &&
+                                AntAgentMechanics.possibleNextCity(currentCityIsVisitedString, sourceCity,
+                                        currentEdge.getTargetId())
+                                ) {
                                     possibleCities.add(new EdgeCityPair(currentEdge.getTargetId(), edgeIndex));
                                 }
                             }
@@ -375,7 +367,11 @@ public class AntAgent extends Agent {
                                     nextStateProbabilities);
                             for (EdgeCityPair currentElement : sortedPairs) {
                                 StringBuilder newConfiguration = new StringBuilder(currentCityIsVisitedString);
-                                newConfiguration.setCharAt(Math.toIntExact(currentElement.cityIndex - 1), '1');
+                                if(currentElement.cityIndex != sourceCity)
+                                    newConfiguration.setCharAt(Math.toIntExact(currentElement.cityIndex - 1), '1');
+                                else {
+                                    newConfiguration.setCharAt(Math.toIntExact(sourceCity - 1), '2');
+                                }
                                 List<Integer> newPath = new ArrayList<>(currentPath);
                                 newPath.add(currentElement.edgeIndex);
                                 edgeTrack.add(new TrackConfiguration(currentElement.edgeIndex,
@@ -396,7 +392,7 @@ public class AntAgent extends Agent {
                         }
                     }
                     if (allAntsFinished) {
-//                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
+                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
                         // update the pheromone levels:
                         Double[] newPheromoneLevels = AntAgentMechanics.updatePheromoneLevel(
                                 subjectivePheromoneLevel.get(0), antPaths, cityGrid, tourLengths,
@@ -514,8 +510,6 @@ public class AntAgent extends Agent {
             }
             // read the environment graph:
             readGrid();
-            // create the cityIsVisited array:
-            cityIsVisited = new boolean[numberOfCities];
 
             // initialize the subjectivePheromoneLevel list:
             subjectivePheromoneLevel = new ArrayList<>();

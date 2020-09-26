@@ -150,20 +150,33 @@ public class AntAgentMechanics {
      *                          ('1' - visited, '0' - not visited)
      * @return true if a hamiltonian tour found, false otherwise
      */
-    public static boolean tourCondition(String cityVisitedString, List<AntAgent.CityRoad> cityGrid,
-                                        long currentCity, long sourceCity){
-        boolean foundEdge = false;
-        for (AntAgent.CityRoad currentRoad : cityGrid) {
-            if (currentRoad.getSourceId() == currentCity && currentRoad.getTargetId() == sourceCity) {
-                foundEdge = true;
-                break;
-            }
-        }
-        if(!foundEdge)return false;
+    public static boolean tourCondition(String cityVisitedString, long sourceCity){
         for(int charIndex = 0;charIndex < cityVisitedString.length();charIndex++){
             if(cityVisitedString.charAt(charIndex) == '0')return false;
         }
+        if(cityVisitedString.charAt(Math.toIntExact(sourceCity - 1)) != '2')return false;
         return true;
+    }
+
+    /**
+     * Check if the current edge can be traversed and should be considered when searching for next possible cities.
+     * @param currentCityIsVisitedString the string representation of the visited cities.
+     * @param sourceCity the first city visited on this path.
+     * @param targetCity the city to which this edge leads.
+     * @return true if the target city can be visited, false otherwise.
+     */
+    public static boolean possibleNextCity(String currentCityIsVisitedString, long sourceCity, long targetCity){
+        if(sourceCity == targetCity){
+            // return true only if all the cities have been visited only once:
+            for(int charIndex = 0;charIndex < currentCityIsVisitedString.length();charIndex++){
+                if(currentCityIsVisitedString.charAt(charIndex) != '1')return false;
+            }
+            return true;
+        }
+        else {
+            // return true only if target city hasn't been visited yet:
+            return currentCityIsVisitedString.charAt(Math.toIntExact(targetCity - 1)) == '0';
+        }
     }
 
 }
