@@ -61,11 +61,6 @@ public class AntAgent extends Agent {
     private boolean[] finishedAnt;
 
     /**
-     * cityIsVisited[i] = how many times this city has been visited.
-     */
-    private int[] cityIsVisited;
-
-    /**
      * edgeProbabilities[i] =
      * - the probability that the i-th edge from the cityGrid
      * will be next
@@ -241,10 +236,6 @@ public class AntAgent extends Agent {
                     // start from a randomly chosen city:
                     sourceCity = random.nextInt(numberOfCities) + 1;
                     currentCity = sourceCity;
-
-                    // reset the cityIsVisited array:
-                    Arrays.fill(cityIsVisited, 0);
-                    cityIsVisited[Math.toIntExact(currentCity) - 1] = 1;
 
                     // update the antAgents list:
                     antAgents = new ArrayList<>();
@@ -519,8 +510,6 @@ public class AntAgent extends Agent {
             }
             // read the environment graph:
             readGrid();
-            // create the cityIsVisited array:
-            cityIsVisited = new int[numberOfCities];
 
             // initialize the subjectivePheromoneLevel list:
             subjectivePheromoneLevel = new ArrayList<>();
