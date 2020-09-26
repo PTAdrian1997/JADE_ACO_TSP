@@ -30,4 +30,18 @@ public class Writer {
         }
     }
 
+    /**
+     *
+     * @param currentPath
+     */
+    public static void write(List<Integer> currentPath){
+        try{
+            BufferedWriter bufferedWriter = new BufferedWriter(new
+                    FileWriter("last_path.txt"));
+            bufferedWriter.write(currentPath.toString());
+            bufferedWriter.close();
+        }
+        catch (IOException e){e.printStackTrace();}
+    }
+
 }

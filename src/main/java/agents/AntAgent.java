@@ -158,8 +158,8 @@ public class AntAgent extends Agent {
                                     .collect(Collectors.toList()));
                 }
 
-                System.out.println(myAgent.getName() + ": " + senderAID.getName() +
-                        " changed its status to " + newStatus);
+//                System.out.println(myAgent.getName() + ": " + senderAID.getName() +
+//                        " changed its status to " + newStatus);
             } else {
                 block();
             }
@@ -213,6 +213,7 @@ public class AntAgent extends Agent {
         private long currentCity = -1;
         Random random = new Random();
         boolean deadEndReached = false;
+        List<Integer> lastPath = null;
 
         class TrackConfiguration {
             Integer edgeIndex;
@@ -235,7 +236,7 @@ public class AntAgent extends Agent {
         public void action() {
             switch (state) {
                 case 0:
-                    System.out.println(myAgent.getName() + ": starting...");
+//                    System.out.println(myAgent.getName() + ": starting...");
                     // start the agent:
 
                     // start from a randomly chosen city:
@@ -305,8 +306,8 @@ public class AntAgent extends Agent {
 
                     if (edgeTrack.empty()) {
                         // this graph doesn't contain a hamiltonian tour:
-                        System.out.println(myAgent.getName() + ": cannot find a hamiltonian tour...");
-                        deadEndReached = true;
+//                        System.out.println(myAgent.getName() + ": cannot find a hamiltonian tour...");
+                        //deadEndReached = true;
                         state = 0;
                     } else {
                         // get the last possible edge from the stack:
@@ -314,6 +315,7 @@ public class AntAgent extends Agent {
                         currentCity = cityGrid.get(currentTrack.edgeIndex).getTargetId();
                         String currentCityIsVisitedString = currentTrack.cityIsVisitedString;
                         List<Integer> currentPath = currentTrack.hamiltonianPath;
+                        lastPath = new ArrayList<>(currentPath);
 
                         // check if the tour is complete:
                         if (AntAgentMechanics.tourCondition(currentCityIsVisitedString, cityGrid, currentCity, sourceCity)) {
@@ -322,7 +324,7 @@ public class AntAgent extends Agent {
                             status = true;
                             currentEpoch += 1;
                             finishedAnt[0] = true;
-                            System.out.println(myAgent.getName() + ": a hamiltonian path was found");
+//                            System.out.println(myAgent.getName() + ": a hamiltonian path was found");
                             // inform the other ants that you've finished, and send them the current tour length and the
                             // current path:
                             ACLMessage informFinished = new ACLMessage(ACLMessage.INFORM);
@@ -394,7 +396,7 @@ public class AntAgent extends Agent {
                         }
                     }
                     if (allAntsFinished) {
-                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
+//                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
                         // update the pheromone levels:
                         Double[] newPheromoneLevels = AntAgentMechanics.updatePheromoneLevel(
                                 subjectivePheromoneLevel.get(0), antPaths, cityGrid, tourLengths,
@@ -426,7 +428,9 @@ public class AntAgent extends Agent {
                     System.out.println(myAgent.getName() + ": designated to write the results...");
                     // write the results:
                     Writer.write(subjectivePheromoneLevel.get(0), cityGrid);
+                    Writer.write(lastPath);
                 }
+                System.out.println(myAgent.getName() + ": " + lastPath.toString() + ", " + tourLengths.get(0));
                 System.out.println(myAgent.getName() + ": shutting down FindTourBehavor...");
             }
             return numberOfIterationsReached || deadEndReached;
