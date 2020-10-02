@@ -53,12 +53,19 @@ public class AntAgent extends Agent {
      */
     private boolean status = false;
 
+    private List<Double> iterationLengths = new ArrayList<>();
+
     /**
      * finishedAnt[i] =
      * - true, if the ith ant has found a tsp tour
      * - false, otherwise
      */
     private boolean[] finishedAnt;
+
+    /**
+     * How much pheromone should be added to an edge.
+     */
+    private Double pheromoneQuantity;
 
     /**
      * edgeProbabilities[i] =
@@ -205,7 +212,6 @@ public class AntAgent extends Agent {
         private int state = 0;
         private int currentEpoch = 0;
         private long currentCity = -1;
-        private long sourceCity = -1;
         Random random = new Random();
         boolean deadEndReached = false;
         List<Integer> lastPath = null;
@@ -231,11 +237,11 @@ public class AntAgent extends Agent {
         public void action() {
             switch (state) {
                 case 0:
-                    System.out.println(myAgent.getName() + ": starting...");
+//                    System.out.println(myAgent.getName() + ": starting...");
                     // start the agent:
 
                     // start from a randomly chosen city:
-                    sourceCity = random.nextInt(numberOfCities) + 1;
+                    sourceCity = new Random().nextInt(numberOfCities) + 1;
                     currentCity = sourceCity;
 
                     // update the antAgents list:
@@ -296,7 +302,7 @@ public class AntAgent extends Agent {
 
                     if (edgeTrack.empty()) {
                         // this graph doesn't contain a hamiltonian tour:
-                        System.out.println(myAgent.getName() + ": cannot find a hamiltonian tour...");
+//                        System.out.println(myAgent.getName() + ": cannot find a hamiltonian tour...");
                         state = 0;
                     } else {
                         // get the last possible edge from the stack:
@@ -313,7 +319,7 @@ public class AntAgent extends Agent {
                             status = true;
                             currentEpoch += 1;
                             finishedAnt[0] = true;
-                            System.out.println(myAgent.getName() + ": a hamiltonian path was found");
+//                            System.out.println(myAgent.getName() + ": a hamiltonian path was found");
                             // inform the other ants that you've finished, and send them the current tour length and the
                             // current path:
                             ACLMessage informFinished = new ACLMessage(ACLMessage.INFORM);
@@ -391,17 +397,22 @@ public class AntAgent extends Agent {
                         }
                     }
                     if (allAntsFinished) {
-                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
+//                        System.out.println(myAgent.getName() + ": all ants have found a hamiltonian tour");
+                        // if this is the first ant alphabetically, compute the mean length of the tours and collect it:
+                        if(AntAgentMechanics.isFirstAnt(myAgent.getAID(), antAgents)){
+                            iterationLengths.add(tourLengths.stream().reduce(0.0, Double::sum) /
+                                    antAgents.size());
+                        }
                         // update the pheromone levels:
                         Double[] newPheromoneLevels = AntAgentMechanics.updatePheromoneLevel(
                                 subjectivePheromoneLevel, antPaths, cityGrid, tourLengths,
-                                pheromoneDecayParameter);
+                                pheromoneDecayParameter, pheromoneQuantity);
                         subjectivePheromoneLevel = Arrays.copyOf(newPheromoneLevels, newPheromoneLevels.length);
-                    }
-                    if (currentEpoch == numberOfIterations) {
-                        state = 3;
-                    } else {
-                        state = 0;
+                        if (currentEpoch == numberOfIterations) {
+                            state = 3;
+                        } else {
+                            state = 0;
+                        }
                     }
                     break;
                 case 3:
@@ -416,14 +427,15 @@ public class AntAgent extends Agent {
             if (numberOfIterationsReached) {
                 // the ant that has the first name in alphabetical order is designated
                 // to write the pheromone levels:
-                int agentIndex = 1;
-                while (agentIndex < antAgents.size() &&
-                        antAgents.get(agentIndex).getName().compareTo(myAgent.getAID().getName()) > 0) agentIndex++;
-                if (agentIndex == antAgents.size()) {
+//                int agentIndex = 1;
+//                while (agentIndex < antAgents.size() &&
+//                        antAgents.get(agentIndex).getName().compareTo(myAgent.getAID().getName()) > 0) agentIndex++;
+                if (AntAgentMechanics.isFirstAnt(myAgent.getAID(), antAgents)) {
                     System.out.println(myAgent.getName() + ": designated to write the results...");
                     // write the results:
                     Writer.write(subjectivePheromoneLevel, cityGrid);
                     Writer.write(lastPath);
+                    System.out.println("Iteration means: " + iterationLengths.toString());
                 }
                 System.out.println(myAgent.getName() + ": " + lastPath.stream().map(id -> cityGrid.get(id))
                         .collect(Collectors.toList()).toString() + ", " + tourLengths.get(0));
@@ -449,9 +461,10 @@ public class AntAgent extends Agent {
             // read the number of cities and the source city:
             String[] firstLine = bufferedReader.readLine().split(" ");
             numberOfCities = Integer.parseInt(firstLine[0]);
-            sourceCity = Integer.parseInt(firstLine[1]);
-            betaParameter = Double.parseDouble(firstLine[2]);
-            pheromoneDecayParameter = Double.parseDouble(firstLine[3]);
+            betaParameter = Double.parseDouble(firstLine[1]);
+            pheromoneDecayParameter = Double.parseDouble(firstLine[2]);
+            pheromoneQuantity = Double.parseDouble(firstLine[3]);
+            numberOfIterations = Integer.parseInt(firstLine[4]);
             String currentLine;
             while ((currentLine = bufferedReader.readLine()) != null) {
                 String[] values = currentLine.split(" ");
@@ -483,12 +496,12 @@ public class AntAgent extends Agent {
 
     protected void setup() {
         try {
-            Object[] args = getArguments();
-            if (args == null || args.length == 0) {
-                throw new Exception("invalid number of arguments passed to the AntAgent.");
-            }
-            // get the number of iterations:
-            numberOfIterations = Integer.parseInt((String) args[0]);
+//            Object[] args = getArguments();
+//            if (args == null || args.length == 0) {
+//                throw new Exception("invalid number of arguments passed to the AntAgent.");
+//            }
+//            // get the number of iterations:
+//            numberOfIterations = Integer.parseInt((String) args[0]);
 
             // initialize the antAgents list:
             antAgents = new ArrayList<>();

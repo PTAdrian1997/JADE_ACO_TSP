@@ -1,6 +1,7 @@
 package agents.mechanics;
 
 import agents.AntAgent;
+import jade.core.AID;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -128,7 +129,8 @@ public class AntAgentMechanics {
             Double[] currentPheromoneLevel, List<List<Integer>> antPaths,
             List<AntAgent.CityRoad> cityGrid,
             List<Double> tourLengths,
-            double pheromoneDecayParameter
+            double pheromoneDecayParameter,
+            double pheromoneQuantity
             ){
         Double[] globalPheromoneLevels = Arrays.copyOf(currentPheromoneLevel, currentPheromoneLevel.length);
         double deltaPheromone = 0.0;
@@ -136,7 +138,7 @@ public class AntAgentMechanics {
             // update edge at the given index in the cityGrid List:
             double deltaSum = 0.0;
             for(int antIndex = 0;antIndex < antPaths.size();antIndex++){
-                if(antPaths.get(antIndex).contains(edgeIndex))deltaSum += 1.0 / tourLengths.get(antIndex);
+                if(antPaths.get(antIndex).contains(edgeIndex))deltaSum += pheromoneQuantity / tourLengths.get(antIndex);
             }
             globalPheromoneLevels[edgeIndex] = (1 - pheromoneDecayParameter) * currentPheromoneLevel[edgeIndex] +
                     deltaSum;
@@ -178,6 +180,19 @@ public class AntAgentMechanics {
             // return true only if target city hasn't been visited yet:
             return currentCityIsVisitedString.charAt(Math.toIntExact(targetCity - 1)) == '0';
         }
+    }
+
+    /**
+     * Check if the agent name provided is the first one alphabetically.
+     * @param currentAgentName the name of the current agent
+     * @param agents the list of agent names
+     * @return true if the provided agent is the first one alphabetically in the provided list, and false otherwise
+     */
+    public static boolean isFirstAnt(AID currentAgentName, List<AID> agents){
+        int agentIndex = 1;
+        while (agentIndex < agents.size() &&
+                agents.get(agentIndex).getName().compareTo(currentAgentName.getName()) > 0) agentIndex++;
+        return agentIndex == agents.size();
     }
 
 }
